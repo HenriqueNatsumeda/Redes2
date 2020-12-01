@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+   <meta charset = "utf-8" />
+   <title>Chat Websocket - Entrega 2</title>
+
+<style>
+#chatbox {
+  border: 4px solid black;
+  height: 400px;
+  width: 400px;
+}
+</style>
+
+<script language = "javascript" type="text/javascript">
+   var websocket = new WebSocket("ws://localhost:8765");
+   initWebSocket();
+   var userId = Math.floor((Math.random()*10000));
+   var username;
+
+   function initWebSocket(webSocket){
+    websocket.onopen = function(ev){
+      onOpen(ev);
+    };
+    websocket.onmessage = function(ev){
+      message = JSON.parse(ev.data);
+      if (message.type === 'reject'){
+        window.alert("Username já está sendo utilizado.");
+      }
+      if (message.type === 'accepted' && message.userId === userId){
+        window.document.getElementById("signup").style.display = "none";
+        window.document.getElementById('chat').style.display = "block";
+        window.document.getElementById('username_zone').style.display = "block";
+        window.document.getElementById('username').innerHTML = message.user;
+        var span = document.createElement("span");
+        var br = document.createElement("br");
+        span.innerHTML = `Você entrou no chat.`;
+        window.document.getElementById('chatbox').appendChild(span);
+        window.document.getElementById('chatbox').appendChild(br);
+      }
+      if (message.type === 'accepted' && message.userId !== userId){
+        var span = document.createElement("span");
+        var br = document.createElement("br");
+        span.innerHTML = `${message.user} juntou-se ao chat.`;
+        window.document.getElementById('chatbox').appendChild(span);
+        window.document.getElementById('chatbox').appendChild(br);
+      }
+      if (message.type === 'message' && message.userId !== userId){
+        var span = document.createElement("span");
+        var br = document.createElement("br");
+        var sender = message.user;
+
+        span.innerHTML = `${sender}: ${message.message}`;
+        window.document.getElementById('chatbox').appendChild(span);
+        window.document.getElementById('chatbox').appendChild(br);
+      }
+      if (message.type === 'users'){
+        window.document.getElementById('users').innerHTML = '';
+        var users = message.message;
+        users.forEach(addUser);
+      }
+    }
+   }
+
+   function onOpen(ev){
+     window.alert("Conectado!");
+   }
+
+   function addUser(user, index, array) {
+    var item = document.createElement("li");
+    item.innerHTML = user;
+    item.onclick = userSelected
+    window.document.getElementById('users').appendChild(item);
+   }
+
+   function userSelected(ev) {
+     var selectedUser = ev.currentTarget.innerHTML;
+     window.document.getElementById('message').value = `~${selectedUser}`
+   }
+
+   function chooseUsername(){
+     username = window.document.getElementById("username_input").value;
+     var message = {
+       "type": "signup",
+       "user": username,
+       "userId": userId
+     };
+     sendToSocket(message);
+   }
+
+   function sendMessage(){
+    var text = window.document.getElementById("message").value;
+    var message = {
+       "type": "message",
+       "user": username,
+       "userId": userId,
+       "message": text
+     };
+    var span = document.createElement("span");
+    var br = document.createElement("br");
+    span.innerHTML = `Você: ${message.message}`;
+    window.document.getElementById('chatbox').appendChild(span);
+    window.document.getElementById('chatbox').appendChild(br);
+    sendToSocket(message);
+   }
+
+   function sendToSocket(message){
+     if(websocket.readyState === websocket.OPEN){
+      return websocket.send(JSON.stringify(message));
+     }
+     else{
+       websocket = new WebSocket("ws://localhost:8765");
+       initWebSocket(websocket);
+       websocket.send(JSON.stringify(message));
+     }
+   }
+
+
+</script>
+
+<h1>Bem vindo ao Chat!</h1>
+<div id="signup">
+  <span>Escolha o seu username:</span>
+  <input id="username_input" />
+  <button onclick="chooseUsername()">OK</button>
+</div>
+<div id="chat" style="display: none;">
+  <div id="chatbox">
+  </div>
+  <input id="message" />
+  <button onclick="sendMessage()">Send</button>
+  <br>
+  <br>
+  <div id="username_zone" style="display: none;">
+    <span>Seu username:</span>
+    <span id="username"></span>
+  </div>
+  <br>
+  <span>Usuários</span>
+  <ul id="users">
+  </ul>
+  <br>
+  <small>Clique no usuário para mandar uma mensagem privada.</small>
+</div>
+</html>
